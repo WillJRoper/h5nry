@@ -205,3 +205,14 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# H5nry specific
+# User configuration and secrets
+.h5nry/
+
+# Generated plots
+h5nry_plots/
+
+# Test HDF5 files (if any)
+*.h5
+*.hdf5
