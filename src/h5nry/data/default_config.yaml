@@ -1,0 +1,47 @@
+# H5nry Default Configuration
+# This file contains default settings for H5nry.
+# User configuration is stored in ~/.h5nry/config.yaml
+
+# LLM Provider Configuration
+# Which LLM provider to use: openai, anthropic, or gemini
+provider: openai
+
+# Model identifier/name
+# OpenAI examples: gpt-4-turbo-preview, gpt-3.5-turbo
+# Anthropic examples: claude-3-opus-20240229, claude-3-sonnet-20240229
+# Gemini examples: gemini-pro
+model: gpt-4-turbo-preview
+
+# Temperature for sampling (0.0 = deterministic, higher = more creative)
+temperature: 0.1
+
+# Maximum tokens to generate (null = provider default)
+max_tokens: null
+
+# Enable streaming responses for faster perceived response time
+stream: true
+
+# Safety Configuration
+# Safety level controls which tools the LLM can use:
+#   - tools_only: Only curated HDF5/stats/plotting tools (no code execution)
+#   - tools_plus_python: All tools including Python code execution (recommended)
+# NOTE: Python execution is sandboxed - no file system, network, or OS access
+safety_level: tools_plus_python
+
+# Memory Limits
+# Maximum amount of data to load into memory at once (in GB)
+# All dataset-reading operations automatically chunk data to respect this limit
+# Prevents out-of-memory errors when working with large HDF5 files
+max_data_gb: 0.5
+
+# Code History
+# Maximum number of executed code snippets to keep in session memory
+# Only applies when safety_level is tools_plus_python
+recent_code_limit: 20
+
+# API Keys
+# IMPORTANT: Do not store API keys in this file!
+# Use one of these methods instead:
+#   1. Environment variables: OPENAI_API_KEY, ANTHROPIC_API_KEY, GEMINI_API_KEY
+#   2. Login command: h5nry login [provider]
+#   3. Keys are stored securely in ~/.h5nry/secrets.yaml
