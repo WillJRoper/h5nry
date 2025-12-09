@@ -216,3 +216,6 @@ h5nry_plots/
 # Test HDF5 files (if any)
 *.h5
 *.hdf5
+
+# LLM files 
+CLAUDE.md
