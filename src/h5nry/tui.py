@@ -2,18 +2,34 @@
 
 from __future__ import annotations
 
-import asyncio
+import importlib.resources
 from pathlib import Path
 
 from rich.panel import Panel
 from rich.syntax import Syntax
 from textual.app import App, ComposeResult
-from textual.containers import Container, Horizontal, Vertical, VerticalScroll
+from textual.containers import Container, VerticalScroll
 from textual.widgets import Footer, Header, Input, Static
 
 from h5nry.app import H5nryApp
 from h5nry.config import ConfigManager
 from h5nry.session import H5nrySession
+
+
+def load_css() -> str:
+    """Load CSS from data file.
+
+    Returns:
+        CSS content as string
+    """
+    try:
+        # Python 3.11+ style
+        css_file = importlib.resources.files("h5nry.data").joinpath("tui.css")
+        return css_file.read_text()
+    except AttributeError:
+        # Python 3.10 fallback
+        with importlib.resources.open_text("h5nry.data", "tui.css") as f:
+            return f.read()
 
 
 class MessageWidget(Static):
@@ -109,42 +125,7 @@ class CodeSnippetWidget(Static):
 class H5nryTUI(App):
     """Textual TUI application for H5nry."""
 
-    CSS = """
-    Screen {
-        layout: vertical;
-    }
-
-    #status-bar {
-        dock: top;
-        height: 3;
-        background: $surface;
-        padding: 0 1;
-    }
-
-    #messages-container {
-        height: 1fr;
-        padding: 1;
-    }
-
-    #input-container {
-        dock: bottom;
-        height: auto;
-        background: $surface;
-        padding: 0 1;
-    }
-
-    MessageWidget {
-        margin: 0 0 1 0;
-    }
-
-    CodeHistoryWidget {
-        margin: 0 0 1 0;
-    }
-
-    CodeSnippetWidget {
-        margin: 0 0 1 0;
-    }
-    """
+    CSS = load_css()
 
     BINDINGS = [
         ("ctrl+c", "quit", "Quit"),
@@ -157,7 +138,8 @@ class H5nryTUI(App):
             file_path: Path to HDF5 file
             config_manager: Configuration manager
         """
-        super().__init__()
+        # Set ansi_color to True for terminal transparency
+        super().__init__(ansi_color=True)
         self.file_path = Path(file_path)
         self.config_manager = config_manager
         self.session: H5nrySession | None = None
@@ -182,7 +164,9 @@ class H5nryTUI(App):
 
         # Input container
         with Container(id="input-container"):
-            yield Input(placeholder="Ask a question or type /history, /show N...")
+            yield Input(
+                placeholder="Ask a question or type /history, /show N, /exit..."
+            )
 
         yield Footer()
 
@@ -197,7 +181,7 @@ class H5nryTUI(App):
                 "assistant",
                 f"Hello! I'm H5nry, ready to help you explore {self.file_path.name}.\n\n"
                 "You can ask me questions about the file structure, compute statistics, "
-                "create plots, or analyze datasets. Type /history to see executed code snippets."
+                "create plots, or analyze datasets. Type /history to see executed code snippets.",
             )
             await messages_container.mount(welcome)
 
@@ -206,7 +190,9 @@ class H5nryTUI(App):
 
         except Exception as e:
             messages_container = self.query_one("#messages-container", VerticalScroll)
-            error_msg = MessageWidget("assistant", f"Error initializing session: {str(e)}")
+            error_msg = MessageWidget(
+                "assistant", f"Error initializing session: {str(e)}"
+            )
             await messages_container.mount(error_msg)
 
     async def on_input_submitted(self, event: Input.Submitted) -> None:
@@ -270,7 +256,11 @@ class H5nryTUI(App):
             command: Command string
             container: Messages container
         """
-        if command == "/history":
+        if command == "/exit":
+            # Exit the application
+            self.exit()
+
+        elif command == "/history":
             # Show code history
             code_history = self.session.list_code_history()
             history_widget = CodeHistoryWidget(code_history)
@@ -287,15 +277,22 @@ class H5nryTUI(App):
                     snippet_widget = CodeSnippetWidget(index, snippet)
                     await container.mount(snippet_widget)
                 else:
-                    error_msg = MessageWidget("assistant", f"Invalid index. Valid range: 1-{len(code_history)}")
+                    error_msg = MessageWidget(
+                        "assistant",
+                        f"Invalid index. Valid range: 1-{len(code_history)}",
+                    )
                     await container.mount(error_msg)
 
             except (IndexError, ValueError):
-                error_msg = MessageWidget("assistant", "Usage: /show N (where N is a number)")
+                error_msg = MessageWidget(
+                    "assistant", "Usage: /show N (where N is a number)"
+                )
                 await container.mount(error_msg)
 
         else:
             error_msg = MessageWidget("assistant", f"Unknown command: {command}")
             await container.mount(error_msg)
 
-        container.scroll_end(animate=False)
+        # Only scroll if we didn't exit
+        if command != "/exit":
+            container.scroll_end(animate=False)
