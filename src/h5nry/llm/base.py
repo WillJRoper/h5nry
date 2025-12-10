@@ -37,7 +37,9 @@ class LLMResponse(BaseModel):
 class LLMClient(ABC):
     """Abstract base class for LLM clients."""
 
-    def __init__(self, model: str, temperature: float = 0.1, max_tokens: int | None = None):
+    def __init__(
+        self, model: str, temperature: float = 0.1, max_tokens: int | None = None
+    ):
         """Initialize LLM client.
 
         Args:
