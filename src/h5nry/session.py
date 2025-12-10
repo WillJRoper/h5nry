@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib.resources
 import json
 from collections import deque
 from pathlib import Path
@@ -10,10 +11,33 @@ from typing import Any
 from h5nry.config import AppConfig
 from h5nry.llm.base import LLMClient, Message
 from h5nry.tools import get_all_tools
-from h5nry.tools.hdf5_tree import H5Node, build_tree, get_node_info, list_children, summarize_tree
-from h5nry.tools.plotting import plot_histogram
+from h5nry.tools.hdf5_tree import (
+    H5Node,
+    get_node_info,
+    list_children,
+    summarize_tree,
+)
+from h5nry.tools.plotting import plot_hexbin, plot_histogram, plot_line, plot_scatter
 from h5nry.tools.python_exec import run_python
 from h5nry.tools.stats import dataset_histogram, dataset_stats
+
+
+def load_system_prompt_template() -> str:
+    """Load system prompt template from data file.
+
+    Returns:
+        System prompt template as string
+    """
+    try:
+        # Python 3.11+ style
+        prompt_file = importlib.resources.files("h5nry.data").joinpath(
+            "system_prompt.txt"
+        )
+        return prompt_file.read_text()
+    except AttributeError:
+        # Python 3.10 fallback
+        with importlib.resources.open_text("h5nry.data", "system_prompt.txt") as f:
+            return f.read()
 
 
 class H5nrySession:
@@ -49,34 +73,13 @@ class H5nrySession:
         # Generate file summary
         tree_summary = summarize_tree(self.tree, max_depth=3, max_children=20)
 
-        # Build system prompt
-        system_prompt = f"""You are H5nry, an AI assistant specialized in exploring and analyzing HDF5 files.
+        # Load prompt template
+        template = load_system_prompt_template()
 
-You are currently working with the file: {self.file_path.name}
-
-## File Structure Summary
-
-{tree_summary}
-
-## Your Capabilities
-
-You have access to several tools for investigating this HDF5 file:
-
-1. **HDF5 Tree Tools**:
-   - `get_node_info(path)`: Get detailed information about a specific node
-   - `list_children(path)`: List all children of a group
-
-2. **Statistics Tools**:
-   - `dataset_stats(dataset_path, axis)`: Compute min, max, mean, std, median
-   - `dataset_histogram(dataset_path, bins, range_min, range_max, log_scale)`: Compute histogram
-
-3. **Plotting Tools**:
-   - `plot_histogram(dataset_path, bins, log_scale, range_min, range_max)`: Create and save histogram plot
-"""
-
-        # Add Python execution capability if enabled
+        # Build Python section if enabled
+        python_section = ""
         if self.config.safety_level.value == "tools_plus_python":
-            system_prompt += """
+            python_section = """
 4. **Python Execution (REPL)**:
    - `run_python(code)`: Execute Python code to investigate the file directly
    - **The HDF5 file is already open** as `f` or `h5_file` (read-only)
@@ -95,17 +98,13 @@ You have access to several tools for investigating this HDF5 file:
    **Important:** This gives you full programmatic access to the HDF5 file - use it liberally!
 """
 
-        system_prompt += f"""
-## Important Guidelines
-
-- **Python execution is your most powerful tool** - use it when you need to actually read data or explore the file structure
-- For simple statistics (min/max/mean/std), the `dataset_stats` tool is faster and handles chunking automatically
-- For visualizations, use `plot_histogram` to create plots
-- When users ask about specific dataset values or want custom analysis, use `run_python`
-- Memory limit: {self.config.max_data_gb} GB - if you exceed it, you'll get a clear error asking you to use slicing
-- Be concise and direct in your responses
-- Use the tools actively - don't say "I cannot read the data" when you have `run_python` available!
-"""
+        # Fill in template
+        system_prompt = template.format(
+            file_name=self.file_path.name,
+            tree_summary=tree_summary,
+            python_section=python_section,
+            max_data_gb=self.config.max_data_gb,
+        )
 
         self.messages.append(Message(role="system", content=system_prompt))
 
@@ -157,22 +156,52 @@ You have access to several tools for investigating this HDF5 file:
 
             # Plotting Tools
             elif tool_name == "plot_histogram":
-                output_dir = self.file_path.parent / "h5nry_plots"
                 result = plot_histogram(
                     self.file_path,
                     arguments["dataset_path"],
-                    output_dir,
                     max_bytes,
                     arguments.get("bins", 50),
                     arguments.get("log_scale", False),
                     arguments.get("range_min"),
                     arguments.get("range_max"),
                 )
+            elif tool_name == "plot_scatter":
+                result = plot_scatter(
+                    self.file_path,
+                    arguments["x_dataset_path"],
+                    arguments["y_dataset_path"],
+                    max_bytes,
+                    arguments.get("log_x", False),
+                    arguments.get("log_y", False),
+                    arguments.get("alpha", 0.5),
+                )
+            elif tool_name == "plot_line":
+                result = plot_line(
+                    self.file_path,
+                    arguments["x_dataset_path"],
+                    arguments["y_dataset_path"],
+                    max_bytes,
+                    arguments.get("log_x", False),
+                    arguments.get("log_y", False),
+                )
+            elif tool_name == "plot_hexbin":
+                result = plot_hexbin(
+                    self.file_path,
+                    arguments["x_dataset_path"],
+                    arguments["y_dataset_path"],
+                    max_bytes,
+                    arguments.get("gridsize", 50),
+                    arguments.get("log_x", False),
+                    arguments.get("log_y", False),
+                    arguments.get("log_color", False),
+                )
 
             # Python Execution
             elif tool_name == "run_python":
                 if self.config.safety_level.value != "tools_plus_python":
-                    result = {"error": "Python execution is disabled. Set safety_level to 'tools_plus_python' to enable."}
+                    result = {
+                        "error": "Python execution is disabled. Set safety_level to 'tools_plus_python' to enable."
+                    }
                 else:
                     result = run_python(
                         arguments["code"],
@@ -272,7 +301,9 @@ You have access to several tools for investigating this HDF5 file:
             # No tool calls - we have a final answer
             if response.content:
                 # Add assistant message
-                self.messages.append(Message(role="assistant", content=response.content))
+                self.messages.append(
+                    Message(role="assistant", content=response.content)
+                )
                 return response.content
             else:
                 # Shouldn't happen, but handle gracefully
