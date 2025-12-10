@@ -117,7 +117,9 @@ def login(
         config_manager.set_api_key(provider, api_key)
 
         console.print(f"[green]Success![/green] API key for {provider} has been saved.")
-        console.print(f"[dim]Stored in: {config_manager.config_dir / 'secrets.yaml'}[/dim]")
+        console.print(
+            f"[dim]Stored in: {config_manager.config_dir / 'secrets.yaml'}[/dim]"
+        )
 
     except Exception as e:
         console.print(f"[red]Error:[/red] Failed to save API key: {e}")
