@@ -8,8 +8,57 @@ from pathlib import Path
 from typing import Any
 
 import matplotlib.pyplot as plt
+import numpy as np
 
 from h5nry.tools.stats import dataset_histogram
+
+
+def _check_log_scale_needed(
+    data: np.ndarray, axis_name: str, log_enabled: bool
+) -> dict[str, Any]:
+    """Check if log scale should be used for data based on its range.
+
+    Args:
+        data: Data array to check
+        axis_name: Name of axis (for messages)
+        log_enabled: Whether log scale is currently enabled
+
+    Returns:
+        Dictionary with recommendation and ratio info
+    """
+    # Remove zeros and negatives for ratio calculation
+    positive_data = data[data > 0]
+
+    if len(positive_data) == 0:
+        return {
+            "recommendation": "linear",
+            "reason": f"{axis_name}: No positive values (log scale not possible)",
+            "ratio": None,
+        }
+
+    data_min = float(np.min(positive_data))
+    data_max = float(np.max(positive_data))
+    ratio = data_max / data_min if data_min > 0 else None
+
+    if ratio is None or ratio < 100:
+        recommendation = "linear"
+        reason = f"{axis_name}: Range ratio {ratio:.1f}x (< 100x, linear OK)"
+    elif ratio < 1000:
+        recommendation = "log_suggested"
+        reason = (
+            f"{axis_name}: Range ratio {ratio:.1f}x (100-1000x, log scale recommended)"
+        )
+    else:
+        recommendation = "log_required"
+        reason = f"{axis_name}: Range ratio {ratio:.1f}x (> 1000x, log scale strongly recommended)"
+
+    return {
+        "recommendation": recommendation,
+        "reason": reason,
+        "ratio": ratio,
+        "should_use_log": recommendation in ["log_suggested", "log_required"],
+        "currently_log": log_enabled,
+    }
 
 
 def _open_file(file_path: Path) -> None:
@@ -98,6 +147,7 @@ def plot_histogram(
     log_scale: bool = False,
     range_min: float | None = None,
     range_max: float | None = None,
+    title: str | None = None,
 ) -> dict[str, Any]:
     """Create and save a histogram plot for a dataset.
 
@@ -109,6 +159,7 @@ def plot_histogram(
         log_scale: Use logarithmic scale
         range_min: Minimum value for range
         range_max: Maximum value for range
+        title: Custom plot title (optional)
 
     Returns:
         Dictionary with plot information including the saved file path
@@ -148,7 +199,7 @@ def plot_histogram(
     # Formatting
     ax.set_xlabel("Value")
     ax.set_ylabel("Count")
-    ax.set_title(f"Histogram of {dataset_path}")
+    ax.set_title(title if title else f"Histogram of {dataset_path}")
     ax.grid(True, alpha=0.3)
 
     if log_scale:
@@ -186,6 +237,11 @@ def plot_scatter(
     log_x: bool = False,
     log_y: bool = False,
     alpha: float = 0.5,
+    xlim_min: float | None = None,
+    xlim_max: float | None = None,
+    ylim_min: float | None = None,
+    ylim_max: float | None = None,
+    title: str | None = None,
 ) -> dict[str, Any]:
     """Create and save a scatter plot of two datasets.
 
@@ -197,6 +253,11 @@ def plot_scatter(
         log_x: Use logarithmic scale for x-axis
         log_y: Use logarithmic scale for y-axis
         alpha: Point transparency (0-1)
+        xlim_min: Minimum value for x-axis (optional)
+        xlim_max: Maximum value for x-axis (optional)
+        ylim_min: Minimum value for y-axis (optional)
+        ylim_max: Maximum value for y-axis (optional)
+        title: Custom plot title (optional)
 
     Returns:
         Dictionary with plot information
@@ -218,6 +279,17 @@ def plot_scatter(
     if len(x_data) != len(y_data):
         return {"error": f"Dataset sizes don't match: {len(x_data)} vs {len(y_data)}"}
 
+    # Check if log scales are appropriate
+    x_scale_check = _check_log_scale_needed(x_data, "X-axis", log_x)
+    y_scale_check = _check_log_scale_needed(y_data, "Y-axis", log_y)
+
+    # Build scaling warnings
+    warnings = []
+    if x_scale_check["should_use_log"] and not log_x:
+        warnings.append(f"⚠️  {x_scale_check['reason']} - Consider setting log_x=true")
+    if y_scale_check["should_use_log"] and not log_y:
+        warnings.append(f"⚠️  {y_scale_check['reason']} - Consider setting log_y=true")
+
     # Create plot
     fig, ax = plt.subplots(figsize=(10, 8))
 
@@ -227,11 +299,15 @@ def plot_scatter(
     ax.set_xlabel(x_dataset_path.split("/")[-1])
     ax.set_ylabel(y_dataset_path.split("/")[-1])
 
-    title = f"{y_dataset_path.split('/')[-1]} vs {x_dataset_path.split('/')[-1]}"
-    if x_result["downsampled"] or y_result["downsampled"]:
-        max_stride = max(x_result["stride"], y_result["stride"])
-        title += f" (downsampled 1:{max_stride})"
-    ax.set_title(title)
+    plot_title = title
+    if not plot_title:
+        plot_title = (
+            f"{y_dataset_path.split('/')[-1]} vs {x_dataset_path.split('/')[-1]}"
+        )
+        if x_result["downsampled"] or y_result["downsampled"]:
+            max_stride = max(x_result["stride"], y_result["stride"])
+            plot_title += f" (downsampled 1:{max_stride})"
+    ax.set_title(plot_title)
 
     ax.grid(True, alpha=0.3)
 
@@ -239,6 +315,12 @@ def plot_scatter(
         ax.set_xscale("log")
     if log_y:
         ax.set_yscale("log")
+
+    # Apply axis limits if specified
+    if xlim_min is not None or xlim_max is not None:
+        ax.set_xlim(xlim_min, xlim_max)
+    if ylim_min is not None or ylim_max is not None:
+        ax.set_ylim(ylim_min, ylim_max)
 
     # Save plot
     safe_x = x_dataset_path.replace("/", "_").strip("_")
@@ -257,7 +339,7 @@ def plot_scatter(
     if x_result["downsampled"] or y_result["downsampled"]:
         message += f" (plotted {len(x_data):,} of {x_result['original_size']:,} points)"
 
-    return {
+    result = {
         "success": True,
         "message": message,
         "x_dataset": x_dataset_path,
@@ -267,7 +349,15 @@ def plot_scatter(
         "num_points": len(x_data),
         "downsampled": x_result["downsampled"] or y_result["downsampled"],
         "stride": max(x_result["stride"], y_result["stride"]),
+        "x_range_ratio": x_scale_check["ratio"],
+        "y_range_ratio": y_scale_check["ratio"],
     }
+
+    if warnings:
+        result["scaling_warnings"] = warnings
+        result["message"] += "\n\n" + "\n".join(warnings)
+
+    return result
 
 
 def plot_line(
@@ -277,6 +367,11 @@ def plot_line(
     max_bytes: int,
     log_x: bool = False,
     log_y: bool = False,
+    xlim_min: float | None = None,
+    xlim_max: float | None = None,
+    ylim_min: float | None = None,
+    ylim_max: float | None = None,
+    title: str | None = None,
 ) -> dict[str, Any]:
     """Create and save a line plot of two datasets.
 
@@ -287,6 +382,11 @@ def plot_line(
         max_bytes: Maximum bytes to load at once
         log_x: Use logarithmic scale for x-axis
         log_y: Use logarithmic scale for y-axis
+        xlim_min: Minimum value for x-axis (optional)
+        xlim_max: Maximum value for x-axis (optional)
+        ylim_min: Minimum value for y-axis (optional)
+        ylim_max: Maximum value for y-axis (optional)
+        title: Custom plot title (optional)
 
     Returns:
         Dictionary with plot information
@@ -308,6 +408,17 @@ def plot_line(
     if len(x_data) != len(y_data):
         return {"error": f"Dataset sizes don't match: {len(x_data)} vs {len(y_data)}"}
 
+    # Check if log scales are appropriate
+    x_scale_check = _check_log_scale_needed(x_data, "X-axis", log_x)
+    y_scale_check = _check_log_scale_needed(y_data, "Y-axis", log_y)
+
+    # Build scaling warnings
+    warnings = []
+    if x_scale_check["should_use_log"] and not log_x:
+        warnings.append(f"⚠️  {x_scale_check['reason']} - Consider setting log_x=true")
+    if y_scale_check["should_use_log"] and not log_y:
+        warnings.append(f"⚠️  {y_scale_check['reason']} - Consider setting log_y=true")
+
     # Create plot
     fig, ax = plt.subplots(figsize=(10, 6))
 
@@ -317,11 +428,15 @@ def plot_line(
     ax.set_xlabel(x_dataset_path.split("/")[-1])
     ax.set_ylabel(y_dataset_path.split("/")[-1])
 
-    title = f"{y_dataset_path.split('/')[-1]} vs {x_dataset_path.split('/')[-1]}"
-    if x_result["downsampled"] or y_result["downsampled"]:
-        max_stride = max(x_result["stride"], y_result["stride"])
-        title += f" (downsampled 1:{max_stride})"
-    ax.set_title(title)
+    plot_title = title
+    if not plot_title:
+        plot_title = (
+            f"{y_dataset_path.split('/')[-1]} vs {x_dataset_path.split('/')[-1]}"
+        )
+        if x_result["downsampled"] or y_result["downsampled"]:
+            max_stride = max(x_result["stride"], y_result["stride"])
+            plot_title += f" (downsampled 1:{max_stride})"
+    ax.set_title(plot_title)
 
     ax.grid(True, alpha=0.3)
 
@@ -329,6 +444,12 @@ def plot_line(
         ax.set_xscale("log")
     if log_y:
         ax.set_yscale("log")
+
+    # Apply axis limits if specified
+    if xlim_min is not None or xlim_max is not None:
+        ax.set_xlim(xlim_min, xlim_max)
+    if ylim_min is not None or ylim_max is not None:
+        ax.set_ylim(ylim_min, ylim_max)
 
     # Save plot
     safe_x = x_dataset_path.replace("/", "_").strip("_")
@@ -347,7 +468,7 @@ def plot_line(
     if x_result["downsampled"] or y_result["downsampled"]:
         message += f" (plotted {len(x_data):,} of {x_result['original_size']:,} points)"
 
-    return {
+    result = {
         "success": True,
         "message": message,
         "x_dataset": x_dataset_path,
@@ -357,7 +478,15 @@ def plot_line(
         "num_points": len(x_data),
         "downsampled": x_result["downsampled"] or y_result["downsampled"],
         "stride": max(x_result["stride"], y_result["stride"]),
+        "x_range_ratio": x_scale_check["ratio"],
+        "y_range_ratio": y_scale_check["ratio"],
     }
+
+    if warnings:
+        result["scaling_warnings"] = warnings
+        result["message"] += "\n\n" + "\n".join(warnings)
+
+    return result
 
 
 def plot_hexbin(
@@ -369,6 +498,11 @@ def plot_hexbin(
     log_x: bool = False,
     log_y: bool = False,
     log_color: bool = False,
+    xlim_min: float | None = None,
+    xlim_max: float | None = None,
+    ylim_min: float | None = None,
+    ylim_max: float | None = None,
+    title: str | None = None,
 ) -> dict[str, Any]:
     """Create and save a hexbin plot (2D histogram) of two datasets.
 
@@ -381,6 +515,11 @@ def plot_hexbin(
         log_x: Use logarithmic scale for x-axis
         log_y: Use logarithmic scale for y-axis
         log_color: Use logarithmic scale for colormap
+        xlim_min: Minimum value for x-axis (optional)
+        xlim_max: Maximum value for x-axis (optional)
+        ylim_min: Minimum value for y-axis (optional)
+        ylim_max: Maximum value for y-axis (optional)
+        title: Custom plot title (optional)
 
     Returns:
         Dictionary with plot information
@@ -401,6 +540,17 @@ def plot_hexbin(
     # Check compatible sizes
     if len(x_data) != len(y_data):
         return {"error": f"Dataset sizes don't match: {len(x_data)} vs {len(y_data)}"}
+
+    # Check if log scales are appropriate
+    x_scale_check = _check_log_scale_needed(x_data, "X-axis", log_x)
+    y_scale_check = _check_log_scale_needed(y_data, "Y-axis", log_y)
+
+    # Build scaling warnings
+    warnings = []
+    if x_scale_check["should_use_log"] and not log_x:
+        warnings.append(f"⚠️  {x_scale_check['reason']} - Consider setting log_x=true")
+    if y_scale_check["should_use_log"] and not log_y:
+        warnings.append(f"⚠️  {y_scale_check['reason']} - Consider setting log_y=true")
 
     # Create plot
     fig, ax = plt.subplots(figsize=(10, 8))
@@ -424,13 +574,19 @@ def plot_hexbin(
     ax.set_xlabel(x_dataset_path.split("/")[-1])
     ax.set_ylabel(y_dataset_path.split("/")[-1])
 
-    title = (
-        f"{y_dataset_path.split('/')[-1]} vs {x_dataset_path.split('/')[-1]} (Hexbin)"
-    )
-    if x_result["downsampled"] or y_result["downsampled"]:
-        max_stride = max(x_result["stride"], y_result["stride"])
-        title += f" (downsampled 1:{max_stride})"
-    ax.set_title(title)
+    plot_title = title
+    if not plot_title:
+        plot_title = f"{y_dataset_path.split('/')[-1]} vs {x_dataset_path.split('/')[-1]} (Hexbin)"
+        if x_result["downsampled"] or y_result["downsampled"]:
+            max_stride = max(x_result["stride"], y_result["stride"])
+            plot_title += f" (downsampled 1:{max_stride})"
+    ax.set_title(plot_title)
+
+    # Apply axis limits if specified
+    if xlim_min is not None or xlim_max is not None:
+        ax.set_xlim(xlim_min, xlim_max)
+    if ylim_min is not None or ylim_max is not None:
+        ax.set_ylim(ylim_min, ylim_max)
 
     # Add colorbar
     plt.colorbar(hexbin, ax=ax, label="Count")
@@ -452,7 +608,7 @@ def plot_hexbin(
     if x_result["downsampled"] or y_result["downsampled"]:
         message += f" (plotted {len(x_data):,} of {x_result['original_size']:,} points)"
 
-    return {
+    result = {
         "success": True,
         "message": message,
         "x_dataset": x_dataset_path,
@@ -462,7 +618,15 @@ def plot_hexbin(
         "num_points": len(x_data),
         "downsampled": x_result["downsampled"] or y_result["downsampled"],
         "stride": max(x_result["stride"], y_result["stride"]),
+        "x_range_ratio": x_scale_check["ratio"],
+        "y_range_ratio": y_scale_check["ratio"],
     }
+
+    if warnings:
+        result["scaling_warnings"] = warnings
+        result["message"] += "\n\n" + "\n".join(warnings)
+
+    return result
 
 
 # Tool definitions for LLM
