@@ -7,7 +7,7 @@ from typing import Any
 import anyio
 import google.generativeai as genai
 
-from h5nry.llm.base import LLMClient, LLMResponse, Message, ToolCall
+from h5nry.llm.base import LLMClient, LLMResponse, Message
 
 
 class GeminiClient(LLMClient):
@@ -52,23 +52,25 @@ class GeminiClient(LLMClient):
             elif role in ("system", "tool"):
                 role = "user"  # Gemini doesn't have explicit system/tool roles
 
-            gemini_messages.append({
-                "role": role,
-                "parts": [msg["content"]],
-            })
+            gemini_messages.append(
+                {
+                    "role": role,
+                    "parts": [msg["content"]],
+                }
+            )
 
         return gemini_messages
 
     async def chat(
         self,
         messages: list[Message],
-        tools: list[dict[str, Any]] | None = None,
+        tools: list[dict[str, Any]] | None = None,  # noqa: ARG002
     ) -> LLMResponse:
         """Send a chat request to Gemini.
 
         Args:
             messages: Conversation history
-            tools: Optional list of tool definitions (limited support)
+            tools: Optional list of tool definitions (not implemented)
 
         Returns:
             LLM response
@@ -76,15 +78,13 @@ class GeminiClient(LLMClient):
         Note:
             Gemini's tool/function calling support may be limited compared to
             OpenAI and Anthropic. This is a basic implementation.
+            Tool calling is not currently implemented.
         """
-        # Extract system message if present
-        system_instruction = None
+        # Extract system message if present (filter it out)
         filtered_messages = []
 
         for msg in messages:
-            if msg["role"] == "system":
-                system_instruction = msg["content"]
-            else:
+            if msg["role"] != "system":
                 filtered_messages.append(msg)
 
         gemini_messages = self._convert_messages(filtered_messages)

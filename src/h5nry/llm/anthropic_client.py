@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from typing import Any
 
-import anyio
 from anthropic import AsyncAnthropic
 
 from h5nry.llm.base import LLMClient, LLMResponse, Message, ToolCall
@@ -34,7 +33,9 @@ class AnthropicClient(LLMClient):
         if not self.max_tokens:
             self.max_tokens = 4096
 
-    def _convert_messages(self, messages: list[Message]) -> tuple[str | None, list[dict[str, Any]]]:
+    def _convert_messages(
+        self, messages: list[Message]
+    ) -> tuple[str | None, list[dict[str, Any]]]:
         """Convert our message format to Anthropic format.
 
         Anthropic separates system messages from the conversation.
@@ -60,7 +61,9 @@ class AnthropicClient(LLMClient):
 
         return system_prompt, anthropic_messages
 
-    def _convert_tools(self, tools: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
+    def _convert_tools(
+        self, tools: list[dict[str, Any]] | None
+    ) -> list[dict[str, Any]]:
         """Convert OpenAI-style tools to Anthropic format.
 
         Args:
@@ -76,11 +79,13 @@ class AnthropicClient(LLMClient):
         for tool in tools:
             if tool["type"] == "function":
                 func = tool["function"]
-                anthropic_tools.append({
-                    "name": func["name"],
-                    "description": func.get("description", ""),
-                    "input_schema": func["parameters"],
-                })
+                anthropic_tools.append(
+                    {
+                        "name": func["name"],
+                        "description": func.get("description", ""),
+                        "input_schema": func["parameters"],
+                    }
+                )
 
         return anthropic_tools
 

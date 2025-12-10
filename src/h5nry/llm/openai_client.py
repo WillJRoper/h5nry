@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 from typing import Any
 
-import anyio
 from openai import AsyncOpenAI
 
 from h5nry.llm.base import LLMClient, LLMResponse, Message, ToolCall
