@@ -63,7 +63,7 @@ def _parse_attributes(h5obj: h5py.Group | h5py.Dataset) -> dict[str, Any]:
         Dictionary of attributes with metadata
     """
     attrs = {}
-    for key in h5obj.attrs.keys():
+    for key in h5obj.attrs:
         attr_value = h5obj.attrs[key]
         if _should_load_attribute_value(key):
             # Load full value for description attributes
@@ -105,7 +105,7 @@ def _build_tree_recursive(h5obj: h5py.Group | h5py.Dataset, path: str) -> H5Node
         )
     else:  # Group
         children = []
-        for key in h5obj.keys():
+        for key in h5obj:
             child_path = f"{path}/{key}" if path != "/" else f"/{key}"
             children.append(_build_tree_recursive(h5obj[key], child_path))
 
@@ -160,7 +160,7 @@ def _summarize_node(
         # Add description if present
         if "description" in node.attributes:
             desc = node.attributes["description"]
-            if isinstance(desc, (str, bytes)):
+            if isinstance(desc, str | bytes):
                 desc_str = desc.decode() if isinstance(desc, bytes) else desc
                 lines.append(f"{indent}  Description: {desc_str[:100]}")
     else:  # Group
@@ -170,17 +170,21 @@ def _summarize_node(
         # Add description if present
         if "description" in node.attributes:
             desc = node.attributes["description"]
-            if isinstance(desc, (str, bytes)):
+            if isinstance(desc, str | bytes):
                 desc_str = desc.decode() if isinstance(desc, bytes) else desc
                 lines.append(f"{indent}  Description: {desc_str[:100]}")
 
         if current_depth < max_depth:
             children_to_show = node.children[:max_children]
             for child in children_to_show:
-                lines.extend(_summarize_node(child, current_depth + 1, max_depth, max_children))
+                lines.extend(
+                    _summarize_node(child, current_depth + 1, max_depth, max_children)
+                )
 
             if num_children > max_children:
-                lines.append(f"{indent}  ... and {num_children - max_children} more items")
+                lines.append(
+                    f"{indent}  ... and {num_children - max_children} more items"
+                )
 
     return lines
 
@@ -262,19 +266,20 @@ def get_node_info(root: H5Node, path: str) -> dict[str, Any]:
     }
 
     if isinstance(node, DatasetNode):
-        info.update({
-            "shape": node.shape,
-            "dtype": node.dtype,
-            "size_bytes": node.size_bytes,
-            "size_mb": node.size_bytes / (1024 * 1024),
-            "chunks": node.chunks,
-            "compression": node.compression,
-        })
+        info.update(
+            {
+                "shape": node.shape,
+                "dtype": node.dtype,
+                "size_bytes": node.size_bytes,
+                "size_mb": node.size_bytes / (1024 * 1024),
+                "chunks": node.chunks,
+                "compression": node.compression,
+            }
+        )
     elif isinstance(node, GroupNode):
         info["num_children"] = len(node.children)
         info["children"] = [
-            {"name": child.name, "type": child.type}
-            for child in node.children
+            {"name": child.name, "type": child.type} for child in node.children
         ]
 
     return info
@@ -304,11 +309,13 @@ def list_children(root: H5Node, path: str = "/") -> dict[str, Any]:
             "type": child.type,
         }
         if isinstance(child, DatasetNode):
-            child_info.update({
-                "shape": child.shape,
-                "dtype": child.dtype,
-                "size_mb": child.size_bytes / (1024 * 1024),
-            })
+            child_info.update(
+                {
+                    "shape": child.shape,
+                    "dtype": child.dtype,
+                    "size_mb": child.size_bytes / (1024 * 1024),
+                }
+            )
         elif isinstance(child, GroupNode):
             child_info["num_children"] = len(child.children)
 

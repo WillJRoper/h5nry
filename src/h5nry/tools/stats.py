@@ -81,7 +81,9 @@ def dataset_stats(
             # Need to chunk - read along first axis
             chunk_size = compute_chunk_size(
                 dataset.shape[0],
-                dataset.dtype.itemsize * math.prod(dataset.shape[1:]) if len(dataset.shape) > 1 else dataset.dtype.itemsize,
+                dataset.dtype.itemsize * math.prod(dataset.shape[1:])
+                if len(dataset.shape) > 1
+                else dataset.dtype.itemsize,
                 max_bytes,
             )
 
@@ -104,7 +106,7 @@ def dataset_stats(
                 min_val = min(min_val, float(np.min(chunk_flat)))
                 max_val = max(max_val, float(np.max(chunk_flat)))
                 sum_val += float(np.sum(chunk_flat))
-                sum_sq += float(np.sum(chunk_flat ** 2))
+                sum_sq += float(np.sum(chunk_flat**2))
                 count += chunk_flat.size
 
                 # Collect values for median (warning: memory intensive for large datasets)
@@ -112,7 +114,7 @@ def dataset_stats(
                     all_values.extend(chunk_flat.tolist())
 
             mean_val = sum_val / count
-            variance = (sum_sq / count) - (mean_val ** 2)
+            variance = (sum_sq / count) - (mean_val**2)
             std_val = math.sqrt(max(0, variance))
 
             result = {
@@ -131,7 +133,9 @@ def dataset_stats(
             if all_values:
                 result["median"] = float(np.median(all_values))
                 if len(all_values) < count:
-                    result["median_note"] = f"Computed from {len(all_values)} samples (not all data)"
+                    result[
+                        "median_note"
+                    ] = f"Computed from {len(all_values)} samples (not all data)"
 
             return result
 
@@ -190,7 +194,9 @@ def dataset_histogram(
             if log_scale:
                 if range_min <= 0:
                     return {"error": "Log scale requires positive values"}
-                bin_edges = np.logspace(np.log10(range_min), np.log10(range_max), bins + 1)
+                bin_edges = np.logspace(
+                    np.log10(range_min), np.log10(range_max), bins + 1
+                )
             else:
                 bin_edges = np.linspace(range_min, range_max, bins + 1)
 
@@ -204,7 +210,9 @@ def dataset_histogram(
                 # Chunk the data
                 chunk_size = compute_chunk_size(
                     dataset.shape[0],
-                    dataset.dtype.itemsize * math.prod(dataset.shape[1:]) if len(dataset.shape) > 1 else dataset.dtype.itemsize,
+                    dataset.dtype.itemsize * math.prod(dataset.shape[1:])
+                    if len(dataset.shape) > 1
+                    else dataset.dtype.itemsize,
                     max_bytes,
                 )
 
