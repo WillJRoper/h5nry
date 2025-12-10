@@ -8,7 +8,6 @@ from typing import Any
 
 from rich.console import Group
 from rich.panel import Panel
-from rich.syntax import Syntax
 from rich.text import Text
 from textual.app import App, ComposeResult
 from textual.containers import Container, VerticalScroll
@@ -187,28 +186,6 @@ class CodeHistoryWidget(Static):
         super().__init__(panel, **kwargs)
 
 
-class CodeSnippetWidget(Static):
-    """Widget for displaying a specific code snippet."""
-
-    def __init__(self, index: int, code: str, **kwargs):
-        """Initialize code snippet widget.
-
-        Args:
-            index: Snippet index
-            code: Code content
-            **kwargs: Additional widget arguments
-        """
-        syntax = Syntax(code, "python", theme="monokai", line_numbers=True)
-        panel = Panel(
-            syntax,
-            title=f"Code Snippet {index}",
-            border_style="magenta",
-            padding=(0, 1),
-        )
-
-        super().__init__(panel, **kwargs)
-
-
 class H5nryTUI(App):
     """Textual TUI application for H5nry."""
 
@@ -252,9 +229,7 @@ class H5nryTUI(App):
 
         # Input container
         with Container(id="input-container"):
-            yield Input(
-                placeholder="Ask a question or type /history, /show N, /exit..."
-            )
+            yield Input(placeholder="Ask a question or type /history, /exit...")
 
         yield Footer()
 
@@ -420,29 +395,6 @@ class H5nryTUI(App):
             code_history = self.session.list_code_history()
             history_widget = CodeHistoryWidget(code_history)
             await container.mount(history_widget)
-
-        elif command.startswith("/show "):
-            # Show specific code snippet
-            try:
-                index = int(command.split()[1])
-                code_history = self.session.list_code_history()
-
-                if 1 <= index <= len(code_history):
-                    snippet = code_history[index - 1]
-                    snippet_widget = CodeSnippetWidget(index, snippet)
-                    await container.mount(snippet_widget)
-                else:
-                    error_msg = MessageWidget(
-                        "assistant",
-                        f"Invalid index. Valid range: 1-{len(code_history)}",
-                    )
-                    await container.mount(error_msg)
-
-            except (IndexError, ValueError):
-                error_msg = MessageWidget(
-                    "assistant", "Usage: /show N (where N is a number)"
-                )
-                await container.mount(error_msg)
 
         else:
             error_msg = MessageWidget("assistant", f"Unknown command: {command}")
