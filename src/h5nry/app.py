@@ -126,4 +126,5 @@ class H5nryApp:
         from h5nry.tui import H5nryTUI
 
         app = H5nryTUI(file_path, self.config_manager)
-        app.run()
+        # Disable Textual mouse capture so the terminal can handle highlight + copy.
+        app.run(mouse=False)
