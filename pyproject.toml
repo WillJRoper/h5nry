@@ -1,10 +1,13 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
+requires = ["setuptools>=64", "setuptools_scm>=8", "wheel"]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools_scm]
+version_file = "src/h5nry/_version.py"
 
 [project]
 name = "h5nry"
-version = "0.1.0"
+dynamic = ["version"]
 description = "An AI assistant for investigating HDF5 files"
 readme = "README.md"
 requires-python = ">=3.10"

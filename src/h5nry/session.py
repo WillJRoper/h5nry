@@ -5,6 +5,7 @@ from __future__ import annotations
 import importlib.resources
 import json
 from collections import deque
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -249,11 +250,19 @@ class H5nrySession:
         """
         return list(self.code_history)
 
-    async def ask(self, user_text: str) -> str:
+    async def ask(
+        self,
+        user_text: str,
+        status_callback: Callable[[str, dict[str, Any] | None], None] | None = None,
+    ) -> str:
         """Process a user question and return the answer.
 
         Args:
             user_text: User's question
+            status_callback: Optional callback for status updates.
+                Called with (phase, details) where phase is a string
+                like "planning", "tool_call", "tool_result", "answer"
+                and details is an optional dict with contextual info.
 
         Returns:
             Assistant's response
@@ -267,6 +276,10 @@ class H5nrySession:
 
         while iteration < max_iterations:
             iteration += 1
+
+            # Notify about planning phase on first iteration
+            if iteration == 1 and status_callback:
+                status_callback("planning", None)
 
             # Call LLM with tool schemas from registry
             response = await self.llm_client.chat(self.messages, self.tools)
@@ -294,7 +307,18 @@ class H5nrySession:
 
                 # Execute each tool call
                 for tool_call in response.tool_calls:
+                    # Notify about tool call
+                    if status_callback:
+                        status_callback(
+                            "tool_call",
+                            {"name": tool_call.name, "args": tool_call.arguments},
+                        )
+
                     result = self._execute_tool(tool_call.name, tool_call.arguments)
+
+                    # Notify about tool result
+                    if status_callback:
+                        status_callback("tool_result", {"name": tool_call.name})
 
                     # Add tool result message
                     tool_msg = Message(
@@ -310,6 +334,10 @@ class H5nrySession:
 
             # No tool calls - we have a final answer
             if response.content:
+                # Notify about final answer generation
+                if status_callback:
+                    status_callback("answer", None)
+
                 # Add assistant message
                 self.messages.append(
                     Message(role="assistant", content=response.content)

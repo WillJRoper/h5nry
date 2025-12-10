@@ -20,7 +20,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field
 from ruamel.yaml import YAML
 
-from h5nry.__version__ import __version__
+from h5nry import __version__
 
 
 class SafetyLevel(str, Enum):

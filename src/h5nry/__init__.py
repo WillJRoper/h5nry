@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
-__version__ = "0.1.0"
+from h5nry._version import __version__
+
 __author__ = "Will Roper"
 __email__ = "w.roper@sussex.ac.uk"
