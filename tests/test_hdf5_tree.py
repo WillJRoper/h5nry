@@ -8,7 +8,6 @@ from pathlib import Path
 import h5py
 import numpy as np
 import pytest
-
 from h5nry.tools.hdf5_tree import (
     DatasetNode,
     GroupNode,
@@ -84,7 +83,9 @@ def test_tree_structure(sample_hdf5_file):
     assert len(gas_node.children) == 2
 
     # Find temperature dataset
-    temp_node = next(child for child in gas_node.children if child.name == "temperature")
+    temp_node = next(
+        child for child in gas_node.children if child.name == "temperature"
+    )
     assert isinstance(temp_node, DatasetNode)
     assert temp_node.shape == (100, 50)
     assert temp_node.attributes["description"] == "Gas temperature in Kelvin"

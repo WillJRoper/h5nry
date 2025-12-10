@@ -7,7 +7,6 @@ import tempfile
 from pathlib import Path
 
 import pytest
-
 from h5nry.config import AppConfig, ConfigManager, SafetyLevel
 
 
@@ -80,7 +79,12 @@ def test_config_manager_env_overrides():
 
         finally:
             # Clean up environment
-            for key in ["H5NRY_PROVIDER", "H5NRY_MODEL", "H5NRY_TEMPERATURE", "H5NRY_MAX_DATA_GB"]:
+            for key in [
+                "H5NRY_PROVIDER",
+                "H5NRY_MODEL",
+                "H5NRY_TEMPERATURE",
+                "H5NRY_MAX_DATA_GB",
+            ]:
                 os.environ.pop(key, None)
 
 

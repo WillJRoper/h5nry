@@ -8,7 +8,6 @@ from pathlib import Path
 import h5py
 import numpy as np
 import pytest
-
 from h5nry.tools.stats import compute_chunk_size, dataset_histogram, dataset_stats
 
 
