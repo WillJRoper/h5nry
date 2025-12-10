@@ -2,6 +2,9 @@
 # This file contains default settings for H5nry.
 # User configuration is stored in ~/.h5nry/config.yaml
 
+# Version (automatically managed)
+version: "0.1.0"
+
 # LLM Provider Configuration
 # Which LLM provider to use: openai, anthropic, or gemini
 provider: openai
