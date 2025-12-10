@@ -1,0 +1,43 @@
+/* H5nry TUI CSS Styles */
+
+Screen {
+    layout: vertical;
+}
+
+Header {
+}
+
+Footer {
+}
+
+#status-bar {
+    dock: top;
+    height: 3;
+    padding: 0 1;
+}
+
+#messages-container {
+    height: 1fr;
+    padding: 1;
+}
+
+#input-container {
+    dock: bottom;
+    height: auto;
+    padding: 1;
+}
+
+Input {
+}
+
+MessageWidget {
+    margin: 0 0 1 0;
+}
+
+CodeHistoryWidget {
+    margin: 0 0 1 0;
+}
+
+CodeSnippetWidget {
+    margin: 0 0 1 0;
+}
