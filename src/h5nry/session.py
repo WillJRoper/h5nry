@@ -262,6 +262,7 @@ class H5nrySession:
                     arguments.get("log_scale", False),
                     arguments.get("range_min"),
                     arguments.get("range_max"),
+                    arguments.get("title"),
                 )
             elif tool_name == "plot_scatter":
                 result = plot_scatter(
@@ -272,6 +273,11 @@ class H5nrySession:
                     arguments.get("log_x", False),
                     arguments.get("log_y", False),
                     arguments.get("alpha", 0.5),
+                    arguments.get("xlim_min"),
+                    arguments.get("xlim_max"),
+                    arguments.get("ylim_min"),
+                    arguments.get("ylim_max"),
+                    arguments.get("title"),
                 )
             elif tool_name == "plot_line":
                 result = plot_line(
@@ -281,6 +287,11 @@ class H5nrySession:
                     max_bytes,
                     arguments.get("log_x", False),
                     arguments.get("log_y", False),
+                    arguments.get("xlim_min"),
+                    arguments.get("xlim_max"),
+                    arguments.get("ylim_min"),
+                    arguments.get("ylim_max"),
+                    arguments.get("title"),
                 )
             elif tool_name == "plot_hexbin":
                 result = plot_hexbin(
@@ -292,6 +303,11 @@ class H5nrySession:
                     arguments.get("log_x", False),
                     arguments.get("log_y", False),
                     arguments.get("log_color", False),
+                    arguments.get("xlim_min"),
+                    arguments.get("xlim_max"),
+                    arguments.get("ylim_min"),
+                    arguments.get("ylim_max"),
+                    arguments.get("title"),
                 )
 
             # Python Execution

@@ -203,6 +203,7 @@ class H5nryTUI(App):
             config_manager: Configuration manager
         """
         # Set ansi_color to True for terminal transparency
+        # Disable mouse to allow terminal text selection
         super().__init__(ansi_color=True)
         self.file_path = Path(file_path)
         self.config_manager = config_manager
@@ -238,14 +239,40 @@ class H5nryTUI(App):
         try:
             self.session = await self.app_instance.create_session(self.file_path)
 
-            # Add welcome message
+            # Add welcome message with ASCII art
             messages_container = self.query_one("#messages-container", VerticalScroll)
-            welcome = MessageWidget(
-                "assistant",
-                f"Hello! I'm H5nry, ready to help you explore {self.file_path.name}.\n\n"
-                "You can ask me questions about the file structure, compute statistics, "
-                "create plots, or analyze datasets. Type /history to see executed code snippets.",
-            )
+            ascii_art = """```
+ __    __   _______
+|\\ \\  |\\ \\ |\\      \\
+| HH  | HH | 5555555   _______     ______    __    __
+| HH__| HH | 55____   |\\      \\   /\\     \\  |\\ \\  |\\ \\
+| HH   \\HH | 55    \\  | NNNNNNN\\ |\\ RRRRRR\\ | YY  | YY
+| HHHHHHHH  \\5555555\\ | NN  | NN | RR   \\RR | YY  | YY
+| HH  | HH |  \\__| 55 | NN  | NN | RR       | YY__/ YY
+| HH  | HH  \\55   \\55 | NN  | NN | RR        \\YY   \\YY
+ \\HH   \\HH   \\555555   \\NN   \\NN  \\RR        _\\YYYYYYY
+                                            |\\ \\__| YY
+                                             \\YY   \\YY
+                                              \\YYYYYY
+```
+
+Hello! I'm H5nry, your AI assistant for HDF5 file exploration.
+
+**File:** {self.file_path.name}
+
+I can help you:
+• Explore file structure and metadata
+• Compute statistics on datasets
+• Create visualizations (histograms, scatter plots, line plots)
+• Analyze data with custom Python code
+• Search for specific datasets or attributes
+
+**Commands:**
+• **/history** - See executed code snippets
+• **/exit** - Exit the application
+
+Type your question to get started!"""
+            welcome = MessageWidget("assistant", ascii_art)
             await messages_container.mount(welcome)
 
             # Focus input

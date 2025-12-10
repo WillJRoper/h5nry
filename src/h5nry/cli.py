@@ -20,6 +20,27 @@ app = typer.Typer(
 console = Console()
 
 
+def print_banner():
+    """Print H5nry ASCII art banner."""
+    banner = """[cyan]
+ __    __   _______
+|\\ \\  |\\ \\ |\\      \\
+| HH  | HH | 5555555   _______     ______    __    __
+| HH__| HH | 55____   |\\      \\   /\\     \\  |\\ \\  |\\ \\
+| HH   \\HH | 55    \\  | NNNNNNN\\ |\\ RRRRRR\\ | YY  | YY
+| HHHHHHHH  \\5555555\\ | NN  | NN | RR   \\RR | YY  | YY
+| HH  | HH |  \\__| 55 | NN  | NN | RR       | YY__/ YY
+| HH  | HH  \\55   \\55 | NN  | NN | RR        \\YY   \\YY
+ \\HH   \\HH   \\555555   \\NN   \\NN  \\RR        _\\YYYYYYY
+                                            |\\ \\__| YY
+                                             \\YY   \\YY
+                                              \\YYYYYY[/cyan]
+
+[bold]H5nry - AI-Powered HDF5 File Investigation[/bold]
+"""
+    console.print(banner)
+
+
 @app.command()
 def main_command(
     file_path: Path = typer.Argument(
@@ -33,6 +54,7 @@ def main_command(
 ):
     """Launch the interactive TUI for exploring an HDF5 file."""
     try:
+        print_banner()
         config_manager = ConfigManager()
         h5nry_app = H5nryApp(config_manager)
         h5nry_app.run_tui(file_path)
@@ -116,7 +138,7 @@ def login(
         config_manager = ConfigManager()
         config_manager.set_api_key(provider, api_key)
 
-        console.print(f"[green]Success![/green] API key for {provider} has been saved.")
+        console.print("[green]Success![/green] API key for {provider} has been saved.")
         console.print(
             f"[dim]Stored in: {config_manager.config_dir / 'secrets.yaml'}[/dim]"
         )
