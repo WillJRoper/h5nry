@@ -54,7 +54,6 @@ def main_command(
 ):
     """Launch the interactive TUI for exploring an HDF5 file."""
     try:
-        print_banner()
         config_manager = ConfigManager()
         h5nry_app = H5nryApp(config_manager)
         h5nry_app.run_tui(file_path)
@@ -80,6 +79,7 @@ def ask(
 ):
     """Ask a single question about an HDF5 file (non-interactive)."""
     try:
+        print_banner()
         config_manager = ConfigManager()
         h5nry_app = H5nryApp(config_manager)
 

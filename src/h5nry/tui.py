@@ -241,7 +241,7 @@ class H5nryTUI(App):
 
             # Add welcome message with ASCII art
             messages_container = self.query_one("#messages-container", VerticalScroll)
-            ascii_art = """```
+            ascii_art = """
  __    __   _______
 |\\ \\  |\\ \\ |\\      \\
 | HH  | HH | 5555555   _______     ______    __    __
@@ -254,7 +254,7 @@ class H5nryTUI(App):
                                             |\\ \\__| YY
                                              \\YY   \\YY
                                               \\YYYYYY
-```
+
 
 Hello! I'm H5nry, your AI assistant for HDF5 file exploration.
 
