@@ -14,8 +14,15 @@ from h5nry.llm.base import LLMClient, Message
 from h5nry.tool_registry import get_tool_schemas
 from h5nry.tools.hdf5_tree import (
     H5Node,
+    check_compatibility,
+    file_overview,
+    get_attribute,
     get_node_info,
+    list_attributes,
     list_children,
+    search_by_attribute,
+    search_paths,
+    summarize_group,
     summarize_tree,
 )
 from h5nry.tools.plotting import (
@@ -26,7 +33,16 @@ from h5nry.tools.plotting import (
     plot_scatter,
 )
 from h5nry.tools.python_exec import run_python
-from h5nry.tools.stats import dataset_histogram, dataset_stats
+from h5nry.tools.stats import (
+    dataset_correlation,
+    dataset_histogram,
+    dataset_missing_values,
+    dataset_preview,
+    dataset_slice,
+    dataset_stats,
+    dataset_storage_info,
+    dataset_value_counts,
+)
 
 
 def load_system_prompt_template() -> str:
@@ -136,6 +152,44 @@ class H5nrySession:
                 result = get_node_info(self.tree, arguments["path"])
             elif tool_name == "list_children":
                 result = list_children(self.tree, arguments.get("path", "/"))
+            elif tool_name == "list_attributes":
+                result = list_attributes(self.file_path, arguments["path"])
+            elif tool_name == "get_attribute":
+                result = get_attribute(
+                    self.file_path,
+                    arguments["path"],
+                    arguments["attr_name"],
+                    arguments.get("preview_len", 100),
+                )
+            elif tool_name == "file_overview":
+                result = file_overview(self.file_path, self.tree)
+            elif tool_name == "search_paths":
+                result = search_paths(
+                    self.tree,
+                    arguments["pattern"],
+                    arguments.get("node_type", "any"),
+                    arguments.get("max_results", 50),
+                )
+            elif tool_name == "summarize_group":
+                result = summarize_group(
+                    self.tree,
+                    arguments["path"],
+                    arguments.get("max_children", 20),
+                )
+            elif tool_name == "search_by_attribute":
+                result = search_by_attribute(
+                    self.file_path,
+                    self.tree,
+                    arguments["attr_name"],
+                    arguments.get("value_contains"),
+                    arguments.get("max_results", 50),
+                )
+            elif tool_name == "check_compatibility":
+                result = check_compatibility(
+                    self.file_path,
+                    arguments["a_path"],
+                    arguments["b_path"],
+                )
 
             # Statistics Tools
             elif tool_name == "dataset_stats":
@@ -154,6 +208,48 @@ class H5nrySession:
                     arguments.get("range_min"),
                     arguments.get("range_max"),
                     arguments.get("log_scale", False),
+                )
+            elif tool_name == "dataset_preview":
+                result = dataset_preview(
+                    self.file_path,
+                    arguments["dataset_path"],
+                    max_bytes,
+                    arguments.get("max_elements", 100),
+                    arguments.get("axis"),
+                )
+            elif tool_name == "dataset_missing_values":
+                result = dataset_missing_values(
+                    self.file_path,
+                    arguments["dataset_path"],
+                    max_bytes,
+                )
+            elif tool_name == "dataset_value_counts":
+                result = dataset_value_counts(
+                    self.file_path,
+                    arguments["dataset_path"],
+                    max_bytes,
+                    arguments.get("max_unique", 50),
+                )
+            elif tool_name == "dataset_storage_info":
+                result = dataset_storage_info(
+                    self.file_path,
+                    arguments["dataset_path"],
+                )
+            elif tool_name == "dataset_slice":
+                result = dataset_slice(
+                    self.file_path,
+                    arguments["dataset_path"],
+                    arguments["slice_spec"],
+                    max_bytes,
+                    arguments.get("max_elements", 1000),
+                )
+            elif tool_name == "dataset_correlation":
+                result = dataset_correlation(
+                    self.file_path,
+                    arguments["x_dataset_path"],
+                    arguments["y_dataset_path"],
+                    max_bytes,
+                    arguments.get("method", "pearson"),
                 )
 
             # Plotting Tools

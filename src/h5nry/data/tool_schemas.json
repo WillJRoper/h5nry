@@ -236,6 +236,284 @@
           "required": ["path"]
         }
       }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "list_attributes",
+        "description": "List all attributes on an HDF5 node (group or dataset) without loading full large values. Returns metadata about each attribute including name, dtype, and shape.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "HDF5 path to the node (e.g., '/simulation' or '/dataset')."
+            }
+          },
+          "required": ["path"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "get_attribute",
+        "description": "Retrieve the value of a specific attribute with automatic truncation for large values. Useful for inspecting metadata.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "HDF5 path to the node."
+            },
+            "attr_name": {
+              "type": "string",
+              "description": "Name of the attribute to retrieve."
+            },
+            "preview_len": {
+              "type": "integer",
+              "description": "Maximum number of elements/characters to return. Default: 100."
+            }
+          },
+          "required": ["path", "attr_name"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "dataset_preview",
+        "description": "Get a small preview of dataset values without loading the entire dataset. Perfect for quickly inspecting data content.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "dataset_path": {
+              "type": "string",
+              "description": "HDF5 path to the dataset."
+            },
+            "max_elements": {
+              "type": "integer",
+              "description": "Maximum number of elements to preview. Default: 100."
+            },
+            "axis": {
+              "type": ["integer", "null"],
+              "description": "Optional axis to preview along. If null, previews first N elements in flattened order."
+            }
+          },
+          "required": ["dataset_path"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "dataset_missing_values",
+        "description": "Count NaN, +Inf, and -Inf values in floating-point datasets. Helps identify data quality issues.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "dataset_path": {
+              "type": "string",
+              "description": "HDF5 path to the dataset."
+            }
+          },
+          "required": ["dataset_path"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "dataset_value_counts",
+        "description": "Compute frequency counts for discrete/categorical data. Works best with integer or boolean dtypes.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "dataset_path": {
+              "type": "string",
+              "description": "HDF5 path to the dataset."
+            },
+            "max_unique": {
+              "type": "integer",
+              "description": "Maximum number of unique values to track. Default: 50."
+            }
+          },
+          "required": ["dataset_path"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "dataset_storage_info",
+        "description": "Get detailed storage and I/O characteristics of a dataset including compression, chunking, and on-disk size.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "dataset_path": {
+              "type": "string",
+              "description": "HDF5 path to the dataset."
+            }
+          },
+          "required": ["dataset_path"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "file_overview",
+        "description": "Get a comprehensive file-level summary including total number of groups, datasets, logical size, on-disk size, and compression ratio.",
+        "parameters": {
+          "type": "object",
+          "properties": {},
+          "required": []
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "search_paths",
+        "description": "Search for HDF5 paths by name pattern. Supports substring matching and glob patterns. Useful for finding datasets or groups by name.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "pattern": {
+              "type": "string",
+              "description": "Search pattern (substring or glob like '*temp*')."
+            },
+            "node_type": {
+              "type": "string",
+              "description": "Filter by node type: 'group', 'dataset', or 'any'. Default: 'any'.",
+              "enum": ["group", "dataset", "any"]
+            },
+            "max_results": {
+              "type": "integer",
+              "description": "Maximum number of results to return. Default: 50."
+            }
+          },
+          "required": ["pattern"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "dataset_slice",
+        "description": "Extract a specific slice of a dataset with safety checks. Slice spec uses Python notation (e.g., ':100', '0:10,0:10', '::2').",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "dataset_path": {
+              "type": "string",
+              "description": "HDF5 path to the dataset."
+            },
+            "slice_spec": {
+              "type": "string",
+              "description": "Slice specification using Python notation (e.g., ':100' for first 100, '0:10,0:10' for 2D slice)."
+            },
+            "max_elements": {
+              "type": "integer",
+              "description": "Maximum number of elements to return. Default: 1000."
+            }
+          },
+          "required": ["dataset_path", "slice_spec"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "dataset_correlation",
+        "description": "Compute Pearson correlation between two 1D numeric datasets using chunked processing. Both datasets must have the same length.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "x_dataset_path": {
+              "type": "string",
+              "description": "HDF5 path to first dataset."
+            },
+            "y_dataset_path": {
+              "type": "string",
+              "description": "HDF5 path to second dataset."
+            },
+            "method": {
+              "type": "string",
+              "description": "Correlation method. Currently only 'pearson' is fully supported. Default: 'pearson'.",
+              "enum": ["pearson", "spearman"]
+            }
+          },
+          "required": ["x_dataset_path", "y_dataset_path"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "summarize_group",
+        "description": "Create a detailed summary of a group's contents including child counts, descriptions, and example children.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "HDF5 path to the group."
+            },
+            "max_children": {
+              "type": "integer",
+              "description": "Maximum number of example children to include. Default: 20."
+            }
+          },
+          "required": ["path"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "search_by_attribute",
+        "description": "Find all nodes (groups or datasets) that have a specific attribute, optionally filtering by attribute value content.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "attr_name": {
+              "type": "string",
+              "description": "Name of the attribute to search for."
+            },
+            "value_contains": {
+              "type": ["string", "null"],
+              "description": "Optional substring that the attribute value must contain. If null, any node with the attribute qualifies."
+            },
+            "max_results": {
+              "type": "integer",
+              "description": "Maximum number of results to return. Default: 50."
+            }
+          },
+          "required": ["attr_name"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "check_compatibility",
+        "description": "Check if two datasets are compatible for operations like scatter plots, correlation, or element-wise operations. Analyzes shapes, dtypes, and provides recommendations.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "a_path": {
+              "type": "string",
+              "description": "HDF5 path to first dataset."
+            },
+            "b_path": {
+              "type": "string",
+              "description": "HDF5 path to second dataset."
+            }
+          },
+          "required": ["a_path", "b_path"]
+        }
+      }
     }
   ],
   "python_execution_tool": {
