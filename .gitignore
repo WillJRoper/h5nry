@@ -182,9 +182,9 @@ cython_debug/
 .abstra/
 
 # Visual Studio Code
-#  Visual Studio Code specific template is maintained in a separate VisualStudioCode.gitignore 
+#  Visual Studio Code specific template is maintained in a separate VisualStudioCode.gitignore
 #  that can be found at https://github.com/github/gitignore/blob/main/Global/VisualStudioCode.gitignore
-#  and can be added to the global gitignore or merged into this file. However, if you prefer, 
+#  and can be added to the global gitignore or merged into this file. However, if you prefer,
 #  you could uncomment the following to ignore the entire vscode folder
 # .vscode/
 
@@ -210,12 +210,12 @@ __marimo__/
 # User configuration and secrets
 .h5nry/
 
-# Generated plots
-h5nry_plots/
-
 # Test HDF5 files (if any)
 *.h5
 *.hdf5
 
-# LLM files 
+# Generated plots
+*.png
+
+# LLM files
 CLAUDE.md
