@@ -10,14 +10,20 @@ from typing import Any
 
 from h5nry.config import AppConfig
 from h5nry.llm.base import LLMClient, Message
-from h5nry.tools import get_all_tools
+from h5nry.tool_registry import get_tool_schemas
 from h5nry.tools.hdf5_tree import (
     H5Node,
     get_node_info,
     list_children,
     summarize_tree,
 )
-from h5nry.tools.plotting import plot_hexbin, plot_histogram, plot_line, plot_scatter
+from h5nry.tools.plotting import (
+    _open_file,
+    plot_hexbin,
+    plot_histogram,
+    plot_line,
+    plot_scatter,
+)
 from h5nry.tools.python_exec import run_python
 from h5nry.tools.stats import dataset_histogram, dataset_stats
 
@@ -65,6 +71,9 @@ class H5nrySession:
         self.messages: list[Message] = []
         self.code_history: deque[str] = deque(maxlen=config.recent_code_limit)
 
+        # Get tool schemas from registry (canonical source of truth)
+        self.tools = get_tool_schemas(config)
+
         # Initialize with system prompt
         self._initialize_system_prompt()
 
@@ -107,14 +116,6 @@ class H5nrySession:
         )
 
         self.messages.append(Message(role="system", content=system_prompt))
-
-    def _get_tool_definitions(self) -> list[dict[str, Any]]:
-        """Get tool definitions based on safety level.
-
-        Returns:
-            List of tool definitions
-        """
-        return get_all_tools(self.config.safety_level.value)
 
     def _execute_tool(self, tool_name: str, arguments: dict[str, Any]) -> str:
         """Execute a tool and return the result.
@@ -212,6 +213,18 @@ class H5nrySession:
                     if "error" not in result:
                         self.record_code_snippet(arguments["code"])
 
+            # File Opening Tool
+            elif tool_name == "_open_file":
+                file_path = Path(arguments["path"])
+                if file_path.exists():
+                    _open_file(file_path)
+                    result = {
+                        "success": True,
+                        "message": f"Opened file: {file_path}",
+                    }
+                else:
+                    result = {"error": f"File not found: {file_path}"}
+
             else:
                 result = {"error": f"Unknown tool: {tool_name}"}
 
@@ -248,9 +261,6 @@ class H5nrySession:
         # Add user message
         self.messages.append(Message(role="user", content=user_text))
 
-        # Get tool definitions
-        tools = self._get_tool_definitions()
-
         # Loop to handle tool calls
         max_iterations = 10  # Prevent infinite loops
         iteration = 0
@@ -258,8 +268,8 @@ class H5nrySession:
         while iteration < max_iterations:
             iteration += 1
 
-            # Call LLM
-            response = await self.llm_client.chat(self.messages, tools)
+            # Call LLM with tool schemas from registry
+            response = await self.llm_client.chat(self.messages, self.tools)
 
             # If there are tool calls, execute them
             if response.tool_calls:

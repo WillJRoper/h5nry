@@ -1,0 +1,258 @@
+{
+  "base_tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "get_node_info",
+        "description": "Get detailed information about a specific HDF5 node (group or dataset), including shape, dtype, and attributes.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "HDF5 path to the node, e.g. '/gas/temperature' or '/'. Use '/' for root."
+            }
+          },
+          "required": ["path"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "list_children",
+        "description": "List all direct children of an HDF5 group at the given path.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "HDF5 path to the group. Defaults to '/' (root) if not specified."
+            }
+          },
+          "required": []
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "dataset_stats",
+        "description": "Compute basic statistics (min, max, mean, std, median) on an HDF5 dataset. Automatically handles chunking to respect memory limits.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "dataset_path": {
+              "type": "string",
+              "description": "Absolute HDF5 path to the dataset, e.g. '/gas/temperature'."
+            },
+            "axis": {
+              "type": ["integer", "null"],
+              "description": "Axis along which to compute statistics, or null to aggregate over all data. For 1D datasets, use null."
+            }
+          },
+          "required": ["dataset_path"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "dataset_histogram",
+        "description": "Compute a histogram of dataset values using chunked reads. Returns bin edges and counts suitable for plotting or analysis.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "dataset_path": {
+              "type": "string",
+              "description": "Absolute HDF5 path to the dataset."
+            },
+            "bins": {
+              "type": "integer",
+              "description": "Number of histogram bins. Default: 50."
+            },
+            "range_min": {
+              "type": ["number", "null"],
+              "description": "Minimum value for histogram range. If null, uses data minimum."
+            },
+            "range_max": {
+              "type": ["number", "null"],
+              "description": "Maximum value for histogram range. If null, uses data maximum."
+            },
+            "log_scale": {
+              "type": "boolean",
+              "description": "Whether to use logarithmic binning. Default: false."
+            }
+          },
+          "required": ["dataset_path"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "plot_histogram",
+        "description": "Create and save a histogram plot showing the distribution of values in a single dataset. Returns the path to the saved image file.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "dataset_path": {
+              "type": "string",
+              "description": "HDF5 path to the dataset to plot."
+            },
+            "bins": {
+              "type": "integer",
+              "description": "Number of histogram bins. Default: 50."
+            },
+            "log_scale": {
+              "type": "boolean",
+              "description": "Use logarithmic scale for x-axis. Default: false."
+            },
+            "range_min": {
+              "type": ["number", "null"],
+              "description": "Minimum value for histogram range."
+            },
+            "range_max": {
+              "type": ["number", "null"],
+              "description": "Maximum value for histogram range."
+            }
+          },
+          "required": ["dataset_path"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "plot_scatter",
+        "description": "Create and save a scatter plot showing the relationship between two datasets. Automatically downsamples large datasets. Returns the path to the saved image file.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "x_dataset_path": {
+              "type": "string",
+              "description": "HDF5 path to dataset for x-axis."
+            },
+            "y_dataset_path": {
+              "type": "string",
+              "description": "HDF5 path to dataset for y-axis."
+            },
+            "log_x": {
+              "type": "boolean",
+              "description": "Use logarithmic scale for x-axis. Default: false."
+            },
+            "log_y": {
+              "type": "boolean",
+              "description": "Use logarithmic scale for y-axis. Default: false."
+            },
+            "alpha": {
+              "type": "number",
+              "description": "Point transparency (0-1). Default: 0.5."
+            }
+          },
+          "required": ["x_dataset_path", "y_dataset_path"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "plot_line",
+        "description": "Create and save a line plot connecting points between two datasets. Good for time series and sequential data. Returns the path to the saved image file.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "x_dataset_path": {
+              "type": "string",
+              "description": "HDF5 path to dataset for x-axis."
+            },
+            "y_dataset_path": {
+              "type": "string",
+              "description": "HDF5 path to dataset for y-axis."
+            },
+            "log_x": {
+              "type": "boolean",
+              "description": "Use logarithmic scale for x-axis. Default: false."
+            },
+            "log_y": {
+              "type": "boolean",
+              "description": "Use logarithmic scale for y-axis. Default: false."
+            }
+          },
+          "required": ["x_dataset_path", "y_dataset_path"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "plot_hexbin",
+        "description": "Create and save a hexbin density plot (2D histogram) for datasets with many points. Better than scatter for crowded data (>10k points). Returns the path to the saved image file.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "x_dataset_path": {
+              "type": "string",
+              "description": "HDF5 path to dataset for x-axis."
+            },
+            "y_dataset_path": {
+              "type": "string",
+              "description": "HDF5 path to dataset for y-axis."
+            },
+            "gridsize": {
+              "type": "integer",
+              "description": "Number of hexagons in x-direction. Default: 50."
+            },
+            "log_x": {
+              "type": "boolean",
+              "description": "Use logarithmic scale for x-axis. Default: false."
+            },
+            "log_y": {
+              "type": "boolean",
+              "description": "Use logarithmic scale for y-axis. Default: false."
+            },
+            "log_color": {
+              "type": "boolean",
+              "description": "Use logarithmic scale for color/count. Default: false."
+            }
+          },
+          "required": ["x_dataset_path", "y_dataset_path"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "_open_file",
+        "description": "Open a file on disk (for example, a plot image that has just been generated) using the system's default application.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "Path to the file to open."
+            }
+          },
+          "required": ["path"]
+        }
+      }
+    }
+  ],
+  "python_execution_tool": {
+    "type": "function",
+    "function": {
+      "name": "run_python",
+      "description": "Execute Python code in a restricted environment for custom analysis. The HDF5 file is pre-opened as 'f' or 'h5_file' (read-only). Pre-imported: numpy as np, h5py, math. Respects memory limits.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "The Python code to execute."
+          }
+        },
+        "required": ["code"]
+      }
+    }
+  }
+}

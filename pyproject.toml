@@ -61,7 +61,7 @@ Issues = "https://github.com/WillJRoper/h5nry/issues"
 where = ["src"]
 
 [tool.setuptools.package-data]
-h5nry = ["data/*.yaml", "data/*.css", "data/*.txt"]
+h5nry = ["data/*.yaml", "data/*.css", "data/*.txt", "data/*.json"]
 
 [tool.ruff]
 line-length = 88

@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+from contextlib import suppress
 from typing import Any
 
 import anyio
 import google.generativeai as genai
 
-from h5nry.llm.base import LLMClient, LLMResponse, Message
+from h5nry.llm.base import LLMClient, LLMResponse, Message, ToolCall
 
 
 class GeminiClient(LLMClient):
@@ -61,24 +62,51 @@ class GeminiClient(LLMClient):
 
         return gemini_messages
 
+    def _convert_tools(
+        self, tools: list[dict[str, Any]] | None
+    ) -> list[dict[str, Any]]:
+        """Convert OpenAI-style tools to Gemini format.
+
+        Args:
+            tools: Tools in OpenAI format
+
+        Returns:
+            Tools in Gemini format
+        """
+        if not tools:
+            return []
+
+        gemini_tools = []
+        for tool in tools:
+            if tool["type"] == "function":
+                func = tool["function"]
+                gemini_tools.append(
+                    {
+                        "name": func["name"],
+                        "description": func.get("description", ""),
+                        "parameters": func["parameters"],
+                    }
+                )
+
+        return gemini_tools
+
     async def chat(
         self,
         messages: list[Message],
-        tools: list[dict[str, Any]] | None = None,  # noqa: ARG002
+        tools: list[dict[str, Any]] | None = None,
     ) -> LLMResponse:
         """Send a chat request to Gemini.
 
         Args:
             messages: Conversation history
-            tools: Optional list of tool definitions (not implemented)
+            tools: Optional list of tool definitions
 
         Returns:
             LLM response
 
         Note:
-            Gemini's tool/function calling support may be limited compared to
-            OpenAI and Anthropic. This is a basic implementation.
-            Tool calling is not currently implemented.
+            Gemini function calling is supported but behavior may differ
+            slightly from OpenAI/Anthropic.
         """
         # Extract system message if present (filter it out)
         filtered_messages = []
@@ -96,6 +124,15 @@ class GeminiClient(LLMClient):
         if self.max_tokens:
             generation_config["max_output_tokens"] = self.max_tokens
 
+        # Convert tools if provided
+        gemini_tool_config = None
+        if tools:
+            gemini_tool_funcs = self._convert_tools(tools)
+            if gemini_tool_funcs:
+                gemini_tool_config = [
+                    genai.types.Tool(function_declarations=gemini_tool_funcs)
+                ]
+
         # Convert messages to chat history format
         history = gemini_messages[:-1] if len(gemini_messages) > 1 else []
         latest_message = gemini_messages[-1]["parts"][0] if gemini_messages else ""
@@ -106,18 +143,37 @@ class GeminiClient(LLMClient):
             response = chat.send_message(
                 latest_message,
                 generation_config=generation_config,
+                tools=gemini_tool_config if gemini_tool_config else None,
             )
             return response
 
         response = await anyio.to_thread.run_sync(_sync_chat)
 
         # Parse response
-        content = response.text if hasattr(response, "text") else None
-
-        # Note: Gemini function calling works differently and may require
-        # additional implementation. For now, we return empty tool_calls.
-        # TODO: Implement Gemini function calling properly if needed
+        content = None
         tool_calls = []
+
+        # Check if response has text content
+        # Sometimes Gemini raises ValueError when only function calls exist
+        if hasattr(response, "text"):
+            with suppress(ValueError):
+                content = response.text
+
+        # Check for function calls
+        if hasattr(response, "candidates") and response.candidates:
+            candidate = response.candidates[0]
+            if hasattr(candidate, "content") and hasattr(candidate.content, "parts"):
+                for part in candidate.content.parts:
+                    if hasattr(part, "function_call"):
+                        fc = part.function_call
+                        # Convert Gemini function call to our format
+                        tool_calls.append(
+                            ToolCall(
+                                id=f"call_{fc.name}",  # Gemini doesn't provide IDs
+                                name=fc.name,
+                                arguments=dict(fc.args),
+                            )
+                        )
 
         return LLMResponse(
             content=content,
