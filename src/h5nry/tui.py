@@ -10,8 +10,9 @@ from rich.console import Group
 from rich.panel import Panel
 from rich.text import Text
 from textual.app import App, ComposeResult
-from textual.containers import Container, VerticalScroll
+from textual.containers import VerticalScroll
 from textual.reactive import reactive
+from textual.widget import Widget
 from textual.widgets import Footer, Header, Input, Static
 
 from h5nry.app import H5nryApp
@@ -210,6 +211,8 @@ class H5nryTUI(App):
         self.session: H5nrySession | None = None
         self.app_instance = H5nryApp(config_manager)
         self.current_thinking_widget: ThinkingWidget | None = None
+        self.input_widget: Input | None = None
+        self.messages_container: VerticalScroll | None = None
 
     def compose(self) -> ComposeResult:
         """Compose the UI layout."""
@@ -226,21 +229,24 @@ class H5nryTUI(App):
         yield Static(info_text, id="info-bar")
 
         # Messages container
-        yield VerticalScroll(id="messages-container")
-
-        # Input container
-        with Container(id="input-container"):
-            yield Input(placeholder="Ask a question or type /history, /exit...")
+        with VerticalScroll(id="messages-container"):
+            yield Input(
+                placeholder="Ask a question or type /history, /exit...",
+                id="chat-input",
+            )
 
         yield Footer()
 
     async def on_mount(self) -> None:
         """Initialize session when app mounts."""
         try:
+            self.messages_container = self.query_one(
+                "#messages-container", VerticalScroll
+            )
+            self.input_widget = self.query_one("#chat-input", Input)
             self.session = await self.app_instance.create_session(self.file_path)
 
             # Add welcome message with ASCII art
-            messages_container = self.query_one("#messages-container", VerticalScroll)
             ascii_art = """
  __    __   _______
 |\\ \\  |\\ \\ |\\      \\
@@ -273,17 +279,16 @@ I can help you:
 
 Type your question to get started!"""
             welcome = MessageWidget("assistant", ascii_art)
-            await messages_container.mount(welcome)
+            await self._add_to_conversation(welcome)
 
             # Focus input
-            self.query_one(Input).focus()
+            self.input_widget.focus()
 
         except Exception as e:
-            messages_container = self.query_one("#messages-container", VerticalScroll)
             error_msg = MessageWidget(
                 "assistant", f"Error initializing session: {str(e)}"
             )
-            await messages_container.mount(error_msg)
+            await self._add_to_conversation(error_msg)
 
     def _status_callback(self, phase: str, details: dict[str, Any] | None) -> None:
         """Handle status updates from the session.
@@ -355,27 +360,26 @@ Type your question to get started!"""
         # Clear input
         event.input.value = ""
 
-        messages_container = self.query_one("#messages-container", VerticalScroll)
-
         # Handle special commands
         if user_input.startswith("/"):
             self.log(f"Handling command: {user_input}")
-            await self._handle_command(user_input, messages_container)
+            await self._handle_command(user_input)
             return
 
         # Add user message
         self.log("Adding user message widget")
         user_msg = MessageWidget("user", user_input)
-        await messages_container.mount(user_msg)
+        await self._add_to_conversation(user_msg)
 
         # Add thinking widget
         self.log("Creating thinking widget")
         thinking_widget = ThinkingWidget()
         self.current_thinking_widget = thinking_widget
-        await messages_container.mount(thinking_widget)
+        await self._add_to_conversation(thinking_widget)
 
         # Scroll to bottom
-        messages_container.scroll_end(animate=False)
+        if self.messages_container:
+            self.messages_container.scroll_end(animate=False)
 
         try:
             # Get response from session with status callback
@@ -391,7 +395,7 @@ Type your question to get started!"""
 
             # Add assistant response
             assistant_msg = MessageWidget("assistant", response)
-            await messages_container.mount(assistant_msg)
+            await self._add_to_conversation(assistant_msg)
 
         except Exception as e:
             # Remove thinking widget
@@ -401,17 +405,17 @@ Type your question to get started!"""
 
             # Show error
             error_msg = MessageWidget("assistant", f"Error: {str(e)}")
-            await messages_container.mount(error_msg)
+            await self._add_to_conversation(error_msg)
 
         # Scroll to bottom
-        messages_container.scroll_end(animate=False)
+        if self.messages_container:
+            self.messages_container.scroll_end(animate=False)
 
-    async def _handle_command(self, command: str, container: VerticalScroll) -> None:
+    async def _handle_command(self, command: str) -> None:
         """Handle special commands.
 
         Args:
             command: Command string
-            container: Messages container
         """
         if command == "/exit":
             # Exit the application
@@ -421,12 +425,19 @@ Type your question to get started!"""
             # Show code history
             code_history = self.session.list_code_history()
             history_widget = CodeHistoryWidget(code_history)
-            await container.mount(history_widget)
+            await self._add_to_conversation(history_widget)
 
         else:
             error_msg = MessageWidget("assistant", f"Unknown command: {command}")
-            await container.mount(error_msg)
+            await self._add_to_conversation(error_msg)
 
         # Only scroll if we didn't exit
-        if command != "/exit":
-            container.scroll_end(animate=False)
+        if command != "/exit" and self.messages_container:
+            self.messages_container.scroll_end(animate=False)
+
+    async def _add_to_conversation(self, widget: Widget) -> None:
+        """Insert a widget above the input so the prompt flows with history."""
+        if not self.messages_container or not self.input_widget:
+            return
+        await self.messages_container.mount(widget, before=self.input_widget)
+        self.messages_container.scroll_end(animate=False)

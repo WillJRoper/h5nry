@@ -21,12 +21,6 @@ Footer {
     padding: 1;
 }
 
-#input-container {
-    dock: bottom;
-    height: auto;
-    padding: 1;
-}
-
 Input {
 }
 
